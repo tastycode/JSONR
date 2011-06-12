@@ -12,23 +12,47 @@ var JSONEditor = function() {
 		if (Object.prototype.toString.call(obj)=="[object Object]") return "hash";
 		return "unknown";
 	}
+	var _create_editor=function() {};
 	var _value_wrapper=function(context,obj,view,type) {
+		var edit=function() {
+			//this is a change operation, so we create a function that changes the 
+			//root to modify this node
+			var newval=prompt("Enter new val","");
+			//node will be the leaf, obj will be the whole tree
+			var dfunc=function(obj,path,node) {
+				if (type=="string")
+					newval='"'+newval+'"';
+				var exec="obj"+path+"="+newval;
+				eval(exec);
+				return obj;
+			}
+			context("",dfunc);
+		};
+		var del=function() {
+			//this should delete this node from the root
+			var dfunc=function(obj,path,node) {
+				var exec="delete obj"+path;
+				eval(exec);
+				return obj;	
+			}
+			context("",dfunc);	
+		};
+		//show editing menu 
 		$(view).click(function() {
-				//this is a change operation, so we create a function that changes the 
-				//root to modify this node
-				var newval=prompt("Enter new val","");
-				//node will be the leaf, obj will be the whole tree
-				var dfunc=function(obj,path,node) {
-					if (type=="string")
-						newval='"'+newval+'"';
-					var exec="obj"+path+"="+newval;
-					eval(exec);
-					return obj;
-				}
-				context("",dfunc);
-		});		
+			//create editor interface 
+			//kill other editors
+			$('.editor').remove();
+			var editor=$("<div>",{class:'editor'});
+			editor.append($("<span>",{text:"Edit"}).click(edit));
+			editor.append($("<span>",{text:"Delete"}).click(del));
+			view.append(editor);
+		});
+		$(view).bind('rightclick',function() {
+			alert("You double clicked me!");
+		});
 		return view;	
 	}
+
 	var _display=function(context,obj,type) {
 		var el;
 		var tunnel=function(str,dfunc) {
@@ -40,13 +64,38 @@ var JSONEditor = function() {
 				var child_type=_type(val);
 				var label=$("<dt>",{text:key});
 				var is_parent=child_type=='hash' || child_type=='array';
-				tunnel=function(str,dfunc) {
+				var tunnel=function(str,dfunc) {
 					context("['"+key+"']"+str.toString(),dfunc);
 				}
 				var value_el=$("<dd>",{'data-type': child_type}).append(_display(tunnel,val,child_type));
 				if (is_parent) {
 					label.click(function() {
 						value_el.toggle();
+					});
+					label.hover(function() {
+
+						var node_menu=$('<div>',{class:'node-menu'});
+						var add_link=$('<span>',{text:'Add'}).click(function() {
+							var dfunc=function(obj,path,node) {
+								alert(path);
+								if (child_type=='hash') {
+									var name=prompt("Please enter a name","");
+									var exec="obj"+path+"['"+name+"']=null;";
+								} else {
+									var exec="obj"+path+".push(null);";
+								}
+								alert(exec);
+								eval(exec);
+								return obj;
+							};
+							tunnel("",dfunc);
+						});
+						
+						node_menu.append(add_link);
+						
+						label.append(node_menu);
+					},function() {
+						$('.node-menu').remove();
 					});
 				}
 				el.append(label);
