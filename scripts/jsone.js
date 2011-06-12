@@ -28,6 +28,8 @@
  *	So context/tunnel is essentially an execution path back to the root along which can be passed a callback with curried
  *	arguments from the leaf to be called from the root
  * 	
+ * 	TODO: Better , or at least functional date handling 
+ * 	TODO: More user friendly value editor that handles incompatible data-types more smoothly
  *
  */
 var JSONEditor = function() {
@@ -225,7 +227,6 @@ var JSONEditor = function() {
 
 	//adds a node defaulting to N/A/null
 	var _add_node=function(type,context) {
-		console.log("Creating function for "+type);
 		return function() {
 			var dfunc=function(obj,path,node) {
 				if (type=='hash') {
