@@ -12,17 +12,27 @@ var JSONEditor = function() {
 		if (Object.prototype.toString.call(obj)=="[object Object]") return "hash";
 		return "unknown";
 	}
-	var _value_wrapper=function(context,obj,view) {
+	var _value_wrapper=function(context,obj,view,type) {
 		$(view).click(function() {
+				//this is a change operation, so we create a function that changes the 
+				//root to modify this node
 				var newval=prompt("Enter new val","");
-				context("",newval);
+				//node will be the leaf, obj will be the whole tree
+				var dfunc=function(obj,path,node) {
+					if (type=="string")
+						newval='"'+newval+'"';
+					var exec="obj"+path+"="+newval;
+					eval(exec);
+					return obj;
+				}
+				context("",dfunc);
 		});		
 		return view;	
 	}
 	var _display=function(context,obj,type) {
 		var el;
-		var tunnel=function(str,newval) {
-			context(str,newval);
+		var tunnel=function(str,dfunc) {
+			context(str,dfunc);
 		};
 		if (type=='hash') {	
 			el=$("<dl/>");
@@ -30,8 +40,8 @@ var JSONEditor = function() {
 				var child_type=_type(val);
 				var label=$("<dt>",{text:key});
 				var is_parent=child_type=='hash' || child_type=='array';
-				tunnel=function(str,newval) {
-					context("['"+key+"']"+str.toString(),newval);
+				tunnel=function(str,dfunc) {
+					context("['"+key+"']"+str.toString(),dfunc);
 				}
 				var value_el=$("<dd>",{'data-type': child_type}).append(_display(tunnel,val,child_type));
 				if (is_parent) {
@@ -50,8 +60,8 @@ var JSONEditor = function() {
 				var child_type=_type(val);
 				var is_parent=child_type=='hash' || child_type=='array';
 				var label=$("<span/>",{text:"-",title:i});
-				tunnel=function(str,newval) {
-					context("["+i+"]"+str.toString(),newval);
+				tunnel=function(str,dfunc) {
+					context("["+i+"]"+str.toString(),dfunc);
 				}
 				var value_el=_display(tunnel,val,child_type);
 				var list_el=$("<li>",{'data-type':child_type});
@@ -66,14 +76,14 @@ var JSONEditor = function() {
 			});
 			el.addClass('node-parent');
 		} else if (type=='bool') {
-			el= _value_wrapper(tunnel,obj,$("<div>",{class: obj?'type-bool,type-bool-true':'type-bool,type-bool-false',text: obj?"TRUE":"FALSE"}));
+			el= _value_wrapper(tunnel,obj,$("<div>",{class: obj?'type-bool,type-bool-true':'type-bool,type-bool-false',text: obj?"TRUE":"FALSE"}),type);
 
 		} else if (type=='null') {
-			el=_value_wrapper(tunnel,obj,$("<div>",{class: 'type-null',text:"N/A"}));
+			el=_value_wrapper(tunnel,obj,$("<div>",{class: 'type-null',text:"N/A"}),type);
 		} else if (type=='unknown') {
 			el=$("<div>",{class: 'type-unknown',text:"?"});
 		} else {
-			el=_value_wrapper(tunnel,obj,$("<div>",{class: 'type-'+type,text: obj}));
+			el=_value_wrapper(tunnel,obj,$("<div>",{class: 'type-'+type,text: obj}),type);
 		}
 		return el;
 
@@ -87,9 +97,11 @@ var JSONEditor = function() {
 	       },
 		render: function(target) {
 			var instance=this;
-			target.empty().append(_display(function(str,val) {
-					exec=("_object"+str+"='"+val+"';");
-					eval(exec);
+			target.empty().append(_display(function(str,dfunc) {
+
+
+					var node=eval("_object"+str);
+					dfunc(_object,str,node);
 					instance.render(target);
 
 			},_object,_type(_object)));
