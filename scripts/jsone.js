@@ -13,29 +13,52 @@ var JSONEditor = function() {
 		return "unknown";
 	}
 	var _create_editor=function() {};
-	var _value_wrapper=function(context,obj,view,type) {
-		var edit=function() {
-			//this is a change operation, so we create a function that changes the 
-			//root to modify this node
-			var newval=prompt("Enter new val","");
-			//node will be the leaf, obj will be the whole tree
-			var dfunc=function(obj,path,node) {
-				if (type=="string")
-					newval='"'+newval+'"';
-				var exec="obj"+path+"="+newval;
-				eval(exec);
-				return obj;
-			}
-			context("",dfunc);
-		};
-		var del=function() {
-			//this should delete this node from the root
+	var _del_node=function(context) {
+		return function() {
 			var dfunc=function(obj,path,node) {
 				var exec="delete obj"+path;
 				eval(exec);
 				return obj;	
 			}
 			context("",dfunc);	
+		}
+
+	};
+	var _add_node=function(type,context) {
+		console.log("Creating function for "+type);
+		return function() {
+			var dfunc=function(obj,path,node) {
+				if (type=='hash') {
+					var name=prompt("Please enter a name","");
+					var exec="obj"+path+"['"+name+"']=null;";
+				} else {
+					var exec="obj"+path+".push(null);";
+				}
+				eval(exec);
+				return obj;
+			};
+			context("",dfunc);
+		}
+	};
+	var _value_wrapper=function(context,obj,view,type) {
+		var env=this;
+		var edit=function() {
+			//this is a change operation, so we create a function that changes the 
+			//root to modify this node
+			var newval=prompt("Enter new val","");
+			//node will be the leaf, obj will be the whole tree
+			var dfunc=function(obj,path,node) {
+				try {
+					var exec="obj"+path+"="+newval;
+					eval(exec);
+				} catch (e) {
+					newval='"'+newval+'"';
+					var exec="obj"+path+"="+newval;
+					eval(exec);
+				}
+				return obj;
+			}
+			context("",dfunc);
 		};
 		//show editing menu 
 		$(view).click(function() {
@@ -44,11 +67,8 @@ var JSONEditor = function() {
 			$('.editor').remove();
 			var editor=$("<div>",{class:'editor'});
 			editor.append($("<span>",{text:"Edit"}).click(edit));
-			editor.append($("<span>",{text:"Delete"}).click(del));
+			editor.append($("<span>",{text:"Delete"}).click(_del_node(context)));
 			view.append(editor);
-		});
-		$(view).bind('rightclick',function() {
-			alert("You double clicked me!");
 		});
 		return view;	
 	}
@@ -73,26 +93,11 @@ var JSONEditor = function() {
 						value_el.toggle();
 					});
 					label.hover(function() {
-
 						var node_menu=$('<div>',{class:'node-menu'});
-						var add_link=$('<span>',{text:'Add'}).click(function() {
-							var dfunc=function(obj,path,node) {
-								alert(path);
-								if (child_type=='hash') {
-									var name=prompt("Please enter a name","");
-									var exec="obj"+path+"['"+name+"']=null;";
-								} else {
-									var exec="obj"+path+".push(null);";
-								}
-								alert(exec);
-								eval(exec);
-								return obj;
-							};
-							tunnel("",dfunc);
-						});
-						
+						var add_link=$('<span>',{text:'Add'}).click(_add_node(child_type,tunnel));
+						var del_link=$('<span>',{text:'Delete'}).click(_del_node(tunnel));
 						node_menu.append(add_link);
-						
+						node_menu.append(del_link);	
 						label.append(node_menu);
 					},function() {
 						$('.node-menu').remove();
@@ -108,7 +113,7 @@ var JSONEditor = function() {
 			_.each(obj,function(val,i,o) {
 				var child_type=_type(val);
 				var is_parent=child_type=='hash' || child_type=='array';
-				var label=$("<span/>",{text:"-",title:i});
+				var label=$("<div/>",{text:"-",title:i});
 				tunnel=function(str,dfunc) {
 					context("["+i+"]"+str.toString(),dfunc);
 				}
@@ -117,6 +122,16 @@ var JSONEditor = function() {
 				if (is_parent) {
 					label.click(function() {
 						value_el.toggle();
+					});
+					label.hover(function() {
+						var node_menu=$('<div>',{class:'node-menu'});
+						var add_link=$('<span>',{text:'Add'}).click(_add_node(child_type,tunnel));
+						var del_link=$('<span>',{text:'Delete'}).click(_del_node(tunnel));
+						node_menu.append(add_link);
+						node_menu.append(del_link);	
+						label.append(node_menu);
+					},function() {
+						$('.node-menu').remove();
 					});
 					list_el.append(label);
 				}
