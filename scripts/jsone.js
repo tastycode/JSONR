@@ -403,7 +403,7 @@ var JSONEditor = function() {
 			var raw=$("<div>",{id:"raw"});
 			var textarea=$("<textarea name=\""+name+"\" rows='20' cols='40'></textarea>");
 			explorer.append(displayed_tree);
-			textarea.text(_object.toSource());
+			textarea.text(JSON.stringify(_object));
 			raw.append(textarea);
 			tab_container.append(tab_ul);
 			tab_container.append(explorer);
