@@ -378,13 +378,13 @@ var JSONEditor = function() {
 		value: function() {
 			return _object["/"];
 	       },
-		//render the _object to the jQuery Object @target
-		render: function(target) {
+		//render the _object to the jQuery Object @target, name is the name of the form field
+		render: function(target,name) {
 			var instance=this; //need to pass through the closure 
 
 			//the first argument to display here is actually the root terminator for calls
 			//initiated at leaf-nodes via context("",dfunc). 
-			target.empty().append(_display(function(str,dfunc) {
+			displayed_tree=_display(function(str,dfunc) {
 					//use the path stored in str to determine the path to the node that 
 					//initiated the call up the tree .. determine its value
 					var node=eval("_object"+str);
@@ -394,7 +394,23 @@ var JSONEditor = function() {
 					//re-render the object
 					instance.render(target);
 
-			},_object,_type(_object)));
+			},_object,_type(_object));
+			var tab_container=$("<div>",{class:'tabs'});
+			var tab_ul=$("<ul>");
+			tab_ul.append($("<li>").append($("<a>",{href:"#explorer",text:"Editable Tree"})));
+			tab_ul.append($("<li>").append($("<a>",{href:"#raw",text:"Raw"})));
+			var explorer=$("<div>",{id:"explorer"});
+			var raw=$("<div>",{id:"raw"});
+			var textarea=$("<textarea name=\""+name+"\" rows='20' cols='40'></textarea>");
+			explorer.append(displayed_tree);
+			textarea.text(_object.toSource());
+			raw.append(textarea);
+			tab_container.append(tab_ul);
+			tab_container.append(explorer);
+			tab_container.append(raw);	
+			target.empty().append(tab_container);
+			tab_container.tabs();
+
 		}
 
 	}

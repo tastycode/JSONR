@@ -6,7 +6,7 @@
  Usage: 
  	var jse=new JSONEditor();
  	jse.load({foo:'bar'});
- 	jse.render($("#target"));
+ 	jse.render($("#target"),"field-name");
  About @tunnel,@context: 
  	The whole editor essentially recursively parses its _object creating a DOM tree on the element passed to render
  	To provide editing capabilities, As the tree is created, certain points have bound events that take a "tunnel"
