@@ -12,7 +12,145 @@ var JSONEditor = function() {
 		if (Object.prototype.toString.call(obj)=="[object Object]") return "hash";
 		return "unknown";
 	}
-	var _create_editor=function() {};
+	var _render_editor=function(target,val,type,on_submit){
+		target.empty();
+		var label=$("<label>",{text:"Raw Value"});
+		var text_editor=$("<input>",{val: val,id:"value-target"});	
+		target.append(label);
+		target.append(text_editor);
+		switch (type) {
+			case 'hash':
+				on_submit("{}");
+				$('#leaf-editor').remove();
+			break;
+			case 'array':
+				on_submit("[]");
+				$('#leaf-editor').remove();
+			break;
+			case 'number':
+				if (_.isNaN(val)) val =0;
+
+				var slider=$("<div>",{id:"slider"});
+				slider.slider({
+					value:val,
+					change:function(e,ui) {
+						$('#value-target').val(ui.value);		
+					}
+				});
+
+				target.append(slider);
+			break;
+			case 'bool':
+				var radios=$("<div>",{id:"radios"});
+				var on_opt=$("<input>",{
+					type:"radio",
+					id:"radio-on",
+					name:"bool-val",
+					value:"true"});
+				var on_label=$("<label>",{for:"radio-on",text:"On"});
+				on_label.click(function() {
+					$('#value-target').val("true");
+				});
+				var off_opt=$("<input>",{
+					type:"radio",
+					id:"radio-off",
+					name:"bool-val",
+					value:"false"});
+				var off_label=$("<label>",{for:"radio-off",text:"Off"});
+				off_label.click(function() {
+					$('#value-target').val("false");
+				});
+				if (val)	
+					on_opt.attr('checked',true) 
+				else
+					off_opt.attr('checked',true);
+				radios.append(on_opt);
+				radios.append(on_label);
+				radios.append(off_opt);
+				radios.append(off_label);
+				target.append(radios);
+				radios.buttonset();
+			break;
+			case 'date':
+				text_editor.datepicker();		
+			break;
+		}
+
+
+
+
+	}
+	var _create_editor=function(val,type,on_submit) {
+		$('#leaf-editor').remove();
+		var editor=$("<div/>",{id:"leaf-editor"})
+		var form=$("<form/>");
+		var fieldset=$("<fieldset/>");
+		form.append(fieldset);
+		editor.append(form);
+		var container=fieldset;
+		container.append($("<label>",{text:"Data Type"}));
+		var select_menu=$("<select>");
+		options={
+			'string':"Text",
+			'number':"Number",
+			'null':"Nothing",
+			'date':"Date",
+			'bool':"True/False",
+			'array':"New List",
+			'hash':"New Object"
+		}
+		_.each(options,function(val,key) {
+			var option=$("<option>",{value:key,text:val,selected: key==type});
+			select_menu.append(option);
+		});
+		var edit_area=$("<div>",{id:'leaf-editor-value'});
+	
+		select_menu.bind('change',function() {
+			_render_editor(edit_area, val, $(this).val(),on_submit);
+		});
+		container.append(select_menu);
+		container.append(edit_area);
+		editor.dialog({
+			title:"Edit Value",
+			height: 300,
+			width: 300,
+			modal: true,
+			buttons: {
+				"OK":function() {
+					try {
+						on_submit($("#value-target",this).val());
+					} catch (e) {
+
+						on_submit('"'+$("#value-target",this).val()+'"');
+					}
+					$(this).dialog('close');
+				},
+				"Cancel":function() {
+					$(this).dialog('close');
+				}
+			}
+				
+		});
+		editor.dialog('open');
+		select_menu.trigger('change');
+	}
+	var _parent_hover=function(label,child_type,tunnel) {
+			return function() {
+						var node_menu=$("<span>",{class:'ui-widget-header ui-corner-all node-menu'});
+						var add_button=$("<button>",{title:"Add Node"}).button({
+							text: false,
+							icons:{primary: "ui-icon-seek-start"}
+						}).click(_add_node(child_type,tunnel));
+						var del_button=$("<button>",{title:"Delete Node"}).button({
+							text:false,
+							icons:{primary: "ui-icon-stop"}
+						}).click(_del_node(tunnel));
+						node_menu.append(add_button);
+						node_menu.append(del_button);
+
+						label.append(node_menu);
+					}
+	};
 	var _del_node=function(context) {
 		return function() {
 			var dfunc=function(obj,path,node) {
@@ -45,30 +183,39 @@ var JSONEditor = function() {
 		var edit=function() {
 			//this is a change operation, so we create a function that changes the 
 			//root to modify this node
-			var newval=prompt("Enter new val","");
-			//node will be the leaf, obj will be the whole tree
-			var dfunc=function(obj,path,node) {
-				try {
+			var on_submit=function(newval) {
+				var dfunc=function(obj,path,node) {
 					var exec="obj"+path+"="+newval;
 					eval(exec);
-				} catch (e) {
-					newval='"'+newval+'"';
-					var exec="obj"+path+"="+newval;
-					eval(exec);
+					return obj;
 				}
-				return obj;
-			}
-			context("",dfunc);
+				context("",dfunc);
+			}	
+			_create_editor(obj,type,on_submit);
+			//node will be the leaf, obj will be the whole tree
 		};
 		//show editing menu 
-		$(view).click(function() {
+		$(view).hover(function() {
 			//create editor interface 
 			//kill other editors
-			$('.editor').remove();
-			var editor=$("<div>",{class:'editor'});
-			editor.append($("<span>",{text:"Edit"}).click(edit));
-			editor.append($("<span>",{text:"Delete"}).click(_del_node(context)));
-			view.append(editor);
+			var leaf_menu=$("<span/>",{class:'ui-widget-header ui-corner-all leaf-menu'});
+			var edit_button=$("<button>",{title:"Edit"}).button({
+				text:"Edit",
+				icons: {
+					primary:"ui-icon-seek-next"
+				}
+			}).click(edit);
+			var del_button=$("<button>",{title:"Remove"}).button({
+				text:"Remove",
+				icons: {
+					primary: "ui-icon-seek-prev"
+				}
+			}).click(_del_node(context));
+			leaf_menu.append(edit_button);
+			leaf_menu.append(del_button);
+			view.append(leaf_menu);
+		},function() {
+			$('.leaf-menu').remove();
 		});
 		return view;	
 	}
@@ -92,14 +239,7 @@ var JSONEditor = function() {
 					label.click(function() {
 						value_el.toggle();
 					});
-					label.hover(function() {
-						var node_menu=$('<div>',{class:'node-menu'});
-						var add_link=$('<span>',{text:'Add'}).click(_add_node(child_type,tunnel));
-						var del_link=$('<span>',{text:'Delete'}).click(_del_node(tunnel));
-						node_menu.append(add_link);
-						node_menu.append(del_link);	
-						label.append(node_menu);
-					},function() {
+					label.hover(_parent_hover(label,child_type,tunnel),function() {
 						$('.node-menu').remove();
 					});
 				}
@@ -123,14 +263,7 @@ var JSONEditor = function() {
 					label.click(function() {
 						value_el.toggle();
 					});
-					label.hover(function() {
-						var node_menu=$('<div>',{class:'node-menu'});
-						var add_link=$('<span>',{text:'Add'}).click(_add_node(child_type,tunnel));
-						var del_link=$('<span>',{text:'Delete'}).click(_del_node(tunnel));
-						node_menu.append(add_link);
-						node_menu.append(del_link);	
-						label.append(node_menu);
-					},function() {
+					label.hover(_parent_hover(label,child_type,tunnel),function() {
 						$('.node-menu').remove();
 					});
 					list_el.append(label);
@@ -163,15 +296,11 @@ var JSONEditor = function() {
 			var instance=this;
 			target.empty().append(_display(function(str,dfunc) {
 
-
 					var node=eval("_object"+str);
 					dfunc(_object,str,node);
 					instance.render(target);
 
 			},_object,_type(_object)));
-			$('.node-parent').click(function() {
-
-			});
 		}
 
 	}
