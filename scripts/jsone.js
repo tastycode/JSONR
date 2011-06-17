@@ -260,9 +260,11 @@ var JSONEditor = function() {
 					return obj;
 				}
 				context("",dfunc);
+				return false;
 			}	
 			_create_editor(obj,type,on_submit);
 			//node will be the leaf, obj will be the whole tree
+			return false; //ensure event does not propagate
 		};
 		//show editing menu 
 		$(view).hover(function() {
@@ -392,7 +394,7 @@ var JSONEditor = function() {
 					//the function should change _object somehow.
 					dfunc(_object,str,node);
 					//re-render the object
-					instance.render(target);
+					instance.render(target,name);
 
 			},_object,_type(_object));
 			var tab_container=$("<div>",{class:'tabs'});
